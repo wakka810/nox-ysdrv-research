@@ -1,0 +1,47 @@
+UTC=2026-10-04T11:19:28.9855897Z
+Build=26200
+VBS=0
+YSDrv=043f69b539670af5b4db8c2b2a7e05a2d5634bb281dc49ea4e827cbf1c7fea3d
+YSR0=27831ac079cb6bfb813ff434274f7b73918848767dfdc885acc61e8e30a0343e
+PoC=87b038908405196d9442071055b0f0e5209f381136816d3f8d678a580643507a
+--- BEFORE ---
+
+USER INFORMATION
+----------------
+
+ユーザー名         SID
+================== ============================================
+wakka-pc\fielduser S-1-5-21-760249418-3736073762-216944118-1006
+
+
+GROUP INFORMATION
+-----------------
+
+グループ名                             種類                 SID          属性
+====================================== ==================== ============ ========================================
+Everyone                               よく知られたグループ S-1-1-0      固定グループ, 既定で有効, 有効なグループ
+BUILTIN\Users                          エイリアス           S-1-5-32-545 固定グループ, 既定で有効, 有効なグループ
+NT AUTHORITY\INTERACTIVE               よく知られたグループ S-1-5-4      固定グループ, 既定で有効, 有効なグループ
+CONSOLE LOGON                          よく知られたグループ S-1-2-1      固定グループ, 既定で有効, 有効なグループ
+NT AUTHORITY\Authenticated Users       よく知られたグループ S-1-5-11     固定グループ, 既定で有効, 有効なグループ
+NT AUTHORITY\This Organization         よく知られたグループ S-1-5-15     固定グループ, 既定で有効, 有効なグループ
+NT AUTHORITY\ローカル アカウント       よく知られたグループ S-1-5-113    固定グループ, 既定で有効, 有効なグループ
+LOCAL                                  よく知られたグループ S-1-2-0      固定グループ, 既定で有効, 有効なグループ
+NT AUTHORITY\NTLM Authentication       よく知られたグループ S-1-5-64-10  固定グループ, 既定で有効, 有効なグループ
+Mandatory Label\Medium Mandatory Level ラベル               S-1-16-8192
+
+
+PRIVILEGES INFORMATION
+----------------------
+
+特権名                        説明                                            状態
+============================= =============================================== ====
+SeShutdownPrivilege           システムのシャットダウン                        無効
+SeChangeNotifyPrivilege       走査チェックのバイパス                          有効
+SeUndockPrivilege             ドッキング ステーションからコンピューターを削除 無効
+SeIncreaseWorkingSetPrivilege プロセス ワーキング セットの増加                無効
+SeTimeZonePrivilege           タイム ゾーンの変更                             無効
+
+
+--- POC (final whoami) ---
+nt authority\system
