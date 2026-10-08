@@ -9,9 +9,9 @@ trusted VM process. A local standard user can therefore reach operations
 that assume a trusted VM client.
 
 The PoC uses the installed, signed `YSR0.sys` module and the
-unrestricted session to execute kernel code and replace its process token.
-On the tested physical Windows 11 system, a medium-integrity user ran the
-PoC and its final `whoami` was `nt authority\system`.
+unrestricted session to read and write kernel memory and replace its process
+token. On the tested Windows 11 system, a medium-integrity user ran the PoC
+and its final `whoami` was `nt authority\system`.
 
 ## Tested product and environment
 
@@ -23,14 +23,14 @@ PoC and its final `whoami` was `nt authority\system`.
 | Installer signature | Valid Authenticode signature, Nox Limited |
 | On-disk `BigNoxVM\RT\YSDrv.sys` SHA-256 | `043f69b539670af5b4db8c2b2a7e05a2d5634bb281dc49ea4e827cbf1c7fea3d` |
 | On-disk `BigNoxVM\RT\YSR0.sys` SHA-256 | `27831ac079cb6bfb813ff434274f7b73918848767dfdc885acc61e8e30a0343e` |
-| PoC executable SHA-256 | `87b038908405196d9442071055b0f0e5209f381136816d3f8d678a580643507a` |
+| PoC executable SHA-256 | `00fec86ae312ccd2a5d80b6cbc49e42a1b8a87c25cd1b56e6869763405946113` |
 | OS | Windows 11, build 26200, x64 |
-| Protection state | Secure Boot enabled; VBS=0; HVCI off |
+| Protection state | Secure Boot enabled; VBS/HVCI verified on and off |
 | Starting account | Non-admin, medium-integrity local user |
 
 NoxPlayer was installed through its GUI using administrator
-credentials. The PoC ran later from the non-admin user's PowerShell
-session and ended with `nt authority\system`.
+credentials. The PoC ran later from the non-admin user's PowerShell session
+and ended with `nt authority\system`.
 
 The signed installer's embedded `newver\YSDrv-single` package contains
 the exact `YSDrv.sys` and `YSR0.sys` files installed under `BigNoxVM\RT`.
@@ -115,12 +115,16 @@ standard-user process.
 4. Submit `SUP_IOCTL_LDR_OPEN` and `SUP_IOCTL_LDR_LOAD`. The loader
    accepts the installed signed module and makes its VMM entry points
    available to the session.
-5. Use the unrestricted VMM and page-allocation operations to create
-   VM state and obtain pages mapped into user and kernel address space.
-6. Reach the VM callback path with attacker-controlled VM data. The PoC
-   checks a kernel execution marker before attempting token replacement.
-7. Replace the calling process's token with a SYSTEM token and run
-   `whoami` in that process context.
+5. Create VM state and obtain pages mapped into both user and kernel
+   address space (`SUP_IOCTL_CALL_VMMR0_BIG`, `SUP_IOCTL_PAGE_ALLOC_EX`).
+6. Use the VMM callback operation (320) as a data channel only:
+   `YSDrv!RTStrCopy` reads an arbitrary kernel address (the source pointer
+   arrives in the full 64-bit `r8`), and `YSR0!mov [r8],rdx; ret` (RVA
+   `0xCEE56`) writes an 8-byte zero-extended 32-bit value. Two overlapping
+   stores of zero-extended 32-bit values at `target` and `target+4` compose
+   the full 64-bit value.
+7. Read the System token, replace the calling process's token
+   (`EPROCESS+0x248`), and run `whoami` in that process context.
 
 The main device admits an ordinary caller to a session whose later
 operations assume a trusted VM process. The exploit uses that session
@@ -145,18 +149,24 @@ The request numbers match the analyzed dispatcher and PoC source.
 `YSR0.sys` installed with NoxPlayer. Module signing does not restrict
 the caller to a trusted VM process.
 
-### Kernel execution path
+### Kernel read/write path
 
-The page-allocation request returns both user and kernel addresses for
-pages associated with the session. The PoC prepares the VM structure
-and uses a VMM callback operation to write a marker, then invokes a
-second callback that performs the token replacement. The PoC checks
-the execution marker before replacing its process token.
+The VMM callback operation 320 marshals `rcx` (control structure), a 32-bit
+`rdx`, and a full 64-bit `r8`. The PoC uses it only to call existing signed
+functions:
 
-The token-replacement payload in `poc/poc.c` uses offsets for Windows
-build 26200. The PoC is therefore tied to the stated test environment;
-the admission flaw is in `YSDrv.sys`, while the final payload depends on
-Windows kernel structure layout.
+- `YSDrv!RTStrCopy(dst, cbDst, src)` copies from the `r8` kernel pointer,
+  giving an arbitrary read. Reads resume after embedded zero bytes to
+  reconstruct full 64-bit values.
+- `YSR0!mov [r8],rdx; ret` (RVA `0xCEE56`) stores `rdx` as a full 8-byte
+  value; only the low 32 bits of `rdx` are set, so each store writes a
+  zero-extended 32-bit value. Two overlapping stores at `target` and
+  `target+4` therefore compose a full 64-bit value and also zero the four
+  bytes following it.
+
+The offsets in `poc/poc.c` are for Windows build 26200; the admission flaw
+is in `YSDrv.sys`, while the final payload depends on Windows kernel
+structure layout.
 
 ## Physical-system reproduction
 
@@ -170,28 +180,17 @@ Reproduction steps:
    `YSDrv.sys` and `YSR0.sys` match the tested hashes.
 4. Run the PoC from that PowerShell session.
 
-The successful run is recorded in [`evidence/reproduction.txt`](evidence/reproduction.txt):
-
-```text
-Build=26200
-VBS=0
-YSDrv=043f69b539670af5b4db8c2b2a7e05a2d5634bb281dc49ea4e827cbf1c7fea3d
-YSR0=27831ac079cb6bfb813ff434274f7b73918848767dfdc885acc61e8e30a0343e
-BUILTIN\Users ... S-1-5-32-545
-Mandatory Label\Medium Mandatory Level ... S-1-16-8192
---- POC (final whoami) ---
-nt authority\system
-```
+The successful run is recorded in
+[`evidence/reproduction.txt`](evidence/reproduction.txt).
 
 ## Impact
 
 A standard user who can open the main YSDrv device can obtain a
-privileged SUP session. In the tested configuration, that access was
-used to execute code in the kernel and elevate the calling process to
-`NT AUTHORITY\SYSTEM`.
+privileged SUP session. In the tested configurations, that access was used
+to read and write kernel memory and elevate the calling process to
+`NT AUTHORITY\SYSTEM`, with HVCI both on and off.
 
-The PoC loads a ring-0 module and can crash the machine. Use a
-disposable test system.
+Use a disposable test system.
 
 ## Remediation
 

@@ -18,9 +18,9 @@ medium-integrity PowerShell session and ended with `whoami` reporting
 | Installer SHA-256 | `f76637ba2680feb8d30a413cdbf6335ded749bbedcd2da08f3791db46ea99cc1` |
 | On-disk `BigNoxVM\RT\YSDrv.sys` SHA-256 | `043f69b539670af5b4db8c2b2a7e05a2d5634bb281dc49ea4e827cbf1c7fea3d` |
 | On-disk `BigNoxVM\RT\YSR0.sys` SHA-256 | `27831ac079cb6bfb813ff434274f7b73918848767dfdc885acc61e8e30a0343e` |
-| PoC executable SHA-256 | `87b038908405196d9442071055b0f0e5209f381136816d3f8d678a580643507a` |
+| PoC executable SHA-256 | `00fec86ae312ccd2a5d80b6cbc49e42a1b8a87c25cd1b56e6869763405946113` |
 | Windows build | 26200 |
-| Test configuration | Secure Boot enabled; VBS=0; HVCI off |
+| Test configuration | Secure Boot enabled; VBS running; HVCI on (also verified with HVCI off) |
 
 The installer has a valid Nox Limited Authenticode signature and contains
 the same `YSDrv.sys` and `YSR0.sys` files installed under `BigNoxVM\RT`.
@@ -48,17 +48,23 @@ Build `poc/poc.c` as an x64 console application, for example from an x64
 Visual Studio developer prompt:
 
 ```bat
-cl /nologo /W4 /O2 poc\poc.c /Fe:poc.exe
+cl /nologo /W4 /O2 poc\poc.c advapi32.lib /Fe:poc.exe
 ```
 
-Run `poc.exe` from the non-admin account. A successful run ends with:
+Run it from the non-admin account with the installed module path:
+
+```bat
+poc.exe "C:\Program Files (x86)\Bignox\BigNoxVM\RT\YSR0.sys"
+```
+
+A successful run ends with:
 
 ```text
 nt authority\system
 ```
 
-The PoC uses the installed signed module and is specific to the tested driver
-pair and Windows build. It can crash the test system.
+The PoC is specific to the tested driver pair and Windows build. Use a
+disposable test system.
 
 ## Contents
 

